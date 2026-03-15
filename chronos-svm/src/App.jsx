@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Play, 
   RotateCcw, 
@@ -10,9 +10,24 @@ import {
   Layers,
   Activity
 } from 'lucide-react';
+import { SBFParser } from './chronos/sbf_parser';
+
+// real sbf bytecode example:
+// 1. mov64 r1, 10
+// 2. mov64 r2, 20
+// 3. add64 r2, r1
+// 4. exit
+const DEMO_HEX = 'b70100000a000000b70200001400000007120000000000009500000000000000';
 
 const App = () => {
   const [activeStep, setActiveStep] = useState(0);
+  const [instructions, setInstructions] = useState([]);
+
+  // decode instructions on load
+  useEffect(() => {
+    const decoded = SBFParser.parse(DEMO_HEX);
+    setInstructions(decoded);
+  }, []);
 
   return (
     <div className="min-h-screen p-6 flex flex-col gap-6">
@@ -52,11 +67,11 @@ const App = () => {
                 <Terminal className="w-4 h-4 text-primary" />
                 <h2 className="text-sm font-bold uppercase tracking-wider text-white">SBF Bytecode</h2>
               </div>
-              <span className="text-[10px] bg-white/5 px-2 py-1 rounded text-slate-400">SIGNATURE: 4T...7h</span>
+              <span className="text-[10px] bg-white/5 px-2 py-1 rounded text-slate-400">DEMO_TX_01</span>
             </div>
             
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              {[...Array(20)].map((_, i) => (
+              {instructions.map((inst, i) => (
                 <div 
                   key={i}
                   className={`flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer group
@@ -65,24 +80,37 @@ const App = () => {
                   onClick={() => setActiveStep(i)}
                 >
                   <span className={`text-[10px] font-mono w-6 text-right ${i === activeStep ? 'text-primary' : 'text-slate-600'}`}>
-                    {String(i * 8).padStart(4, '0')}
+                    {String(inst.index * 8).padStart(4, '0')}
                   </span>
-                  <code className={`text-xs flex-1 ${i === activeStep ? 'text-white' : 'text-slate-400 group-hover:text-slate-200'}`}>
-                    {i % 3 === 0 ? 'lddw r0, 0x55dc' : i % 2 === 0 ? 'add64 r1, r2' : 'call 0x21'}
-                  </code>
+                  <div className="flex flex-col gap-0.5 flex-1">
+                    <code className={`text-xs ${i === activeStep ? 'text-white font-bold' : 'text-slate-400 group-hover:text-slate-200'}`}>
+                      {inst.opName} r{inst.dst}{inst.opName.includes('mov') || inst.opName.includes('add') ? `, ${inst.src === 0 ? `0x${inst.imm.toString(16)}` : `r${inst.src}`}` : ''}
+                    </code>
+                    <span className="text-[9px] font-mono text-slate-600 group-hover:text-slate-500 uppercase">
+                      raw: {inst.raw}
+                    </span>
+                  </div>
                   {i === activeStep && <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />}
                 </div>
               ))}
             </div>
 
             <div className="p-4 border-t border-border grid grid-cols-3 gap-2">
-              <button className="flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs transition-colors">
+              <button 
+                onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
+                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs transition-colors"
+              >
                 <ArrowLeft className="w-4 h-4" /> REWIND
               </button>
-              <button className="flex items-center justify-center gap-2 p-2 rounded-lg bg-secondary text-white text-xs font-bold hover:opacity-90 transition-opacity">
+              <button 
+                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-secondary text-white text-xs font-bold hover:opacity-90 transition-opacity"
+              >
                 <Play className="w-4 h-4" /> PLAY
               </button>
-              <button className="flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs transition-colors">
+              <button 
+                onClick={() => setActiveStep(Math.min(instructions.length - 1, activeStep + 1))}
+                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs transition-colors"
+              >
                 NEXT <ArrowRight className="w-4 h-4" />
               </button>
             </div>
@@ -96,11 +124,13 @@ const App = () => {
               <Layers className="w-4 h-4 text-secondary" />
               <h2 className="text-sm font-bold uppercase tracking-wider text-white">Machine Registers</h2>
             </div>
-            <div className="flex-1 p-4 grid grid-cols-2 gap-4">
+            <div className="flex-1 p-4 grid grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto">
               {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(r => (
-                <div key={r} className="flex flex-col gap-1 p-2 bg-white/5 rounded border border-white/5">
-                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">Register r{r}</span>
-                  <span className="text-sm font-mono text-primary font-bold">0x0000000000000000</span>
+                <div key={r} className="flex flex-col gap-0.5 p-2 bg-white/5 rounded border border-white/5">
+                  <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">r{r}</span>
+                  <span className="text-sm font-mono text-primary font-bold">
+                    0x0000000000000000
+                  </span>
                 </div>
               ))}
             </div>
@@ -109,15 +139,32 @@ const App = () => {
           <div className="glass-panel h-1/2 flex flex-col">
           <div className="p-4 border-b border-border flex items-center gap-2">
               <Zap className="w-4 h-4 text-accent" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-white">Instruction Context</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-white">Instruction Detail</h2>
             </div>
-            <div className="flex-1 p-6 flex flex-col items-center justify-center text-center">
-              <div className="w-16 h-16 bg-primary/5 rounded-full flex items-center justify-center mb-4">
-                <Activity className="w-8 h-8 text-primary/40" />
-              </div>
-              <p className="text-slate-400 text-sm max-w-[280px]">
-                Connect the <span className="text-primary underline cursor-pointer">SVM Core</span> to start instruction-level auditing.
-              </p>
+            <div className="flex-1 p-4">
+              {instructions[activeStep] ? (
+                <div className="space-y-4">
+                  <div className="p-3 bg-white/5 rounded border border-white/10">
+                    <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Mnemonic</p>
+                    <p className="text-lg font-mono text-white">{instructions[activeStep].opName.toUpperCase()}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-2 bg-white/5 rounded">
+                      <p className="text-[9px] text-slate-500 uppercase">Input</p>
+                      <p className="text-xs font-mono">r{instructions[activeStep].src}</p>
+                    </div>
+                    <div className="p-2 bg-white/5 rounded">
+                      <p className="text-[9px] text-slate-500 uppercase">Immediate</p>
+                      <p className="text-xs font-mono">0x{instructions[activeStep].imm.toString(16)}</p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-full flex flex-col items-center justify-center text-center">
+                  <Activity className="w-8 h-8 text-primary/40 mb-2" />
+                  <p className="text-slate-400 text-xs">Awaiting instruction data...</p>
+                </div>
+              )}
             </div>
           </div>
         </section>
