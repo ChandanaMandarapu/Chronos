@@ -12,12 +12,12 @@ import {
 } from 'lucide-react';
 import { SBFParser } from './chronos/sbf_parser';
 
-// real sbf bytecode example:
+// real sbf bytecode example including lddw:
 // 1. mov64 r1, 10
-// 2. mov64 r2, 20
+// 2. lddw r2, 0xdeadbeefdeadbeef (16 bytes)
 // 3. add64 r2, r1
 // 4. exit
-const DEMO_HEX = 'b70100000a000000b70200001400000007120000000000009500000000000000';
+const DEMO_HEX = 'b70100000a00000018020000efbeadde00000000deadbeef07120000000000009500000000000000';
 
 const App = () => {
   const [activeStep, setActiveStep] = useState(0);
