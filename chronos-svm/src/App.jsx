@@ -8,7 +8,8 @@ import {
   Zap, 
   Terminal,
   Layers,
-  Activity
+  Activity,
+  Pause
 } from 'lucide-react';
 import { SBFParser } from './chronos/sbf_parser';
 import { ChronosStepper } from './chronos/stepper';
@@ -25,7 +26,8 @@ const SCENARIOS = {
   MANGO: {
     name: "Mango Markets Exploit",
     description: "Oracle manipulation simulation",
-    hex: 'b701000014000000b7020000640000000712000000000000180300000000000000000001000000009500000000000000',
+    // Refining lddw encoding: 1803000000000000 (lddw r3, part1) + 0000000001000000 (part2)
+    hex: 'b701000014000000b7020000640000000712000000000000180300000000000000000000010000009500000000000000',
     alerts: [
       { type: 'alert', title: 'Oracle Risk', text: 'Instruction #0012 detects unusual price variance in account snapshot.' },
       { type: 'alert', title: 'Missing Signer', text: 'Program fails to verify liquidity provider authority.' }
@@ -38,9 +40,11 @@ const App = () => {
   const [instructions, setInstructions] = useState([]);
   const [stepper, setStepper] = useState(null);
   const [currentSnapshot, setCurrentSnapshot] = useState(null);
+  const [isPlaying, setIsPlaying] = useState(false);
 
   // load scenario
   useEffect(() => {
+    setIsPlaying(false);
     const scenario = SCENARIOS[activeScenario];
     const decoded = SBFParser.parse(scenario.hex);
     setInstructions(decoded);
@@ -49,6 +53,35 @@ const App = () => {
     setStepper(engine);
     setCurrentSnapshot(engine.getCurrentState());
   }, [activeScenario]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'ArrowRight') handleNext();
+      if (e.code === 'ArrowLeft') handleRewind();
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsPlaying(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [stepper, instructions]);
+
+  // Auto-play logic
+  useEffect(() => {
+    let interval;
+    if (isPlaying) {
+      interval = setInterval(() => {
+        if (stepper && stepper.currentIndex < instructions.length - 1) {
+          handleNext();
+        } else {
+          setIsPlaying(false);
+        }
+      }, 800);
+    }
+    return () => clearInterval(interval);
+  }, [isPlaying, stepper, instructions]);
 
   const handleNext = () => {
     if (stepper && stepper.stepForward()) {
@@ -160,9 +193,13 @@ const App = () => {
                 <ArrowLeft className="w-4 h-4" /> REWIND
               </button>
               <button 
-                className="flex items-center justify-center gap-2 p-2 rounded-lg bg-secondary text-white text-xs font-bold hover:shadow-[0_0_15px_rgba(153,69,255,0.4)] transition-all active:scale-95"
+                onClick={() => setIsPlaying(!isPlaying)}
+                className={`flex items-center justify-center gap-2 p-2 rounded-lg text-white text-xs font-bold transition-all active:scale-95 ${
+                  isPlaying ? 'bg-red-500 shadow-[0_0_15px_rgba(239,68,68,0.4)]' : 'bg-secondary hover:shadow-[0_0_15px_rgba(153,69,255,0.4)]'
+                }`}
               >
-                <Play className="w-4 h-4" /> PLAY
+                {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                {isPlaying ? 'PAUSE' : 'PLAY'}
               </button>
               <button 
                 onClick={handleNext}
