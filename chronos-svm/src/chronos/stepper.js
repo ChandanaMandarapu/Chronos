@@ -62,8 +62,19 @@ export class ChronosStepper {
     } else if (opName === "add64") {
       const val = src === 0 ? BigInt(imm) : this.state.registers[src];
       this.state.registers[dst] = this.state.registers[dst] + val;
+    } else if (opName === "sub64") {
+      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      this.state.registers[dst] = this.state.registers[dst] - val;
+    } else if (opName === "and64") {
+      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      this.state.registers[dst] = this.state.registers[dst] & val;
+    } else if (opName === "or64") {
+      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      this.state.registers[dst] = this.state.registers[dst] | val;
     } else if (opName === "lddw") {
       this.state.registers[dst] = BigInt(imm);
+    } else if (opName === "exit") {
+      // haling logic could go here
     }
   }
 
