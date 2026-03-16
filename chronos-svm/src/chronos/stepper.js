@@ -18,32 +18,35 @@ export class ChronosStepper {
       pc: 0,
     };
 
-    // record the starting point
-    this.recordSnapshot();
+    // record the starting point (Step 0)
+    this.recordSnapshot(0);
   }
 
   /**
    * take a copy of the current machine state.
    */
-  recordSnapshot() {
+  recordSnapshot(pc) {
     this.history.push({
       registers: new BigUint64Array(this.state.registers),
-      pc: this.state.pc,
-      instruction: this.instructions[this.currentIndex]
+      pc: pc,
+      instruction: this.instructions[pc]
     });
   }
 
   /**
    * move forward one instruction.
-   * for the demo, we simulate the math/moves to show real register updates.
    */
   stepForward() {
     if (this.currentIndex < this.instructions.length - 1) {
+      // 1. Execute the current instruction
       this.simulateExecution(this.instructions[this.currentIndex]);
+      
+      // 2. Increment pointer
       this.currentIndex++;
       this.state.pc = this.currentIndex;
       
-      this.recordSnapshot();
+      // 3. Record the result for the NEW position
+      this.recordSnapshot(this.currentIndex);
       return true;
     }
     return false;
@@ -58,21 +61,21 @@ export class ChronosStepper {
     
     // simple mock logic for basic opcodes
     if (opName === "mov64") {
-      this.state.registers[dst] = src === 0 ? BigInt(imm) : this.state.registers[src];
+      this.state.registers[dst] = src === 0 ? imm : this.state.registers[src];
     } else if (opName === "add64") {
-      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      const val = src === 0 ? imm : this.state.registers[src];
       this.state.registers[dst] = this.state.registers[dst] + val;
     } else if (opName === "sub64") {
-      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      const val = src === 0 ? imm : this.state.registers[src];
       this.state.registers[dst] = this.state.registers[dst] - val;
     } else if (opName === "and64") {
-      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      const val = src === 0 ? imm : this.state.registers[src];
       this.state.registers[dst] = this.state.registers[dst] & val;
     } else if (opName === "or64") {
-      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      const val = src === 0 ? imm : this.state.registers[src];
       this.state.registers[dst] = this.state.registers[dst] | val;
     } else if (opName === "lddw") {
-      this.state.registers[dst] = BigInt(imm);
+      this.state.registers[dst] = imm;
     } else if (opName === "exit") {
       // haling logic could go here
     }
