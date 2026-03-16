@@ -11,6 +11,7 @@ import {
   Activity
 } from 'lucide-react';
 import { SBFParser } from './chronos/sbf_parser';
+import { ChronosStepper } from './chronos/stepper';
 
 // real sbf bytecode example including lddw:
 // 1. mov64 r1, 10
@@ -20,14 +21,34 @@ import { SBFParser } from './chronos/sbf_parser';
 const DEMO_HEX = 'b70100000a00000018020000efbeadde00000000deadbeef07120000000000009500000000000000';
 
 const App = () => {
-  const [activeStep, setActiveStep] = useState(0);
   const [instructions, setInstructions] = useState([]);
+  const [stepper, setStepper] = useState(null);
+  const [currentSnapshot, setCurrentSnapshot] = useState(null);
 
-  // decode instructions on load
+  // decode instructions and init stepper on load
   useEffect(() => {
     const decoded = SBFParser.parse(DEMO_HEX);
     setInstructions(decoded);
+    
+    const engine = new ChronosStepper(decoded);
+    setStepper(engine);
+    setCurrentSnapshot(engine.getCurrentState());
   }, []);
+
+  const handleNext = () => {
+    if (stepper && stepper.stepForward()) {
+      setCurrentSnapshot(stepper.getCurrentState());
+    }
+  };
+
+  const handleRewind = () => {
+    if (stepper && stepper.stepBackward()) {
+      setCurrentSnapshot(stepper.getCurrentState());
+    }
+  };
+
+  const activeStep = currentSnapshot ? currentSnapshot.pc : 0;
+  const registers = currentSnapshot ? currentSnapshot.registers : new BigUint64Array(11);
 
   return (
     <div className="min-h-screen p-6 flex flex-col gap-6">
@@ -77,7 +98,9 @@ const App = () => {
                   className={`flex items-center gap-3 p-2 rounded-md transition-colors cursor-pointer group
                     ${i === activeStep ? 'bg-primary/10 border border-primary/20' : 'hover:bg-white/5'}
                   `}
-                  onClick={() => setActiveStep(i)}
+                  onClick={() => {
+                    // jump logic could be added here later
+                  }}
                 >
                   <span className={`text-[10px] font-mono w-6 text-right ${i === activeStep ? 'text-primary' : 'text-slate-600'}`}>
                     {String(inst.index * 8).padStart(4, '0')}
@@ -97,8 +120,9 @@ const App = () => {
 
             <div className="p-4 border-t border-border grid grid-cols-3 gap-2">
               <button 
-                onClick={() => setActiveStep(Math.max(0, activeStep - 1))}
+                onClick={handleRewind}
                 className="flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs transition-colors"
+                disabled={!currentSnapshot}
               >
                 <ArrowLeft className="w-4 h-4" /> REWIND
               </button>
@@ -108,8 +132,9 @@ const App = () => {
                 <Play className="w-4 h-4" /> PLAY
               </button>
               <button 
-                onClick={() => setActiveStep(Math.min(instructions.length - 1, activeStep + 1))}
+                onClick={handleNext}
                 className="flex items-center justify-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs transition-colors"
+                disabled={instructions.length === 0}
               >
                 NEXT <ArrowRight className="w-4 h-4" />
               </button>
@@ -125,11 +150,11 @@ const App = () => {
               <h2 className="text-sm font-bold uppercase tracking-wider text-white">Machine Registers</h2>
             </div>
             <div className="flex-1 p-4 grid grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto">
-              {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(r => (
+              {Array.from({ length: 11 }).map((_, r) => (
                 <div key={r} className="flex flex-col gap-0.5 p-2 bg-white/5 rounded border border-white/5">
                   <span className="text-[10px] text-slate-500 font-bold uppercase tracking-tighter">r{r}</span>
                   <span className="text-sm font-mono text-primary font-bold">
-                    0x0000000000000000
+                    0x{registers[r].toString(16).padStart(16, '0')}
                   </span>
                 </div>
               ))}

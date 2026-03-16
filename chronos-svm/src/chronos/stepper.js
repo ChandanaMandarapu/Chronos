@@ -35,19 +35,36 @@ export class ChronosStepper {
 
   /**
    * move forward one instruction.
-   * in a real VM, this would execute the math.
-   * for day 2, we simulate the movement and state recording.
+   * for the demo, we simulate the math/moves to show real register updates.
    */
   stepForward() {
     if (this.currentIndex < this.instructions.length - 1) {
+      this.simulateExecution(this.instructions[this.currentIndex]);
       this.currentIndex++;
       this.state.pc = this.currentIndex;
       
-      // record the new state
       this.recordSnapshot();
       return true;
     }
     return false;
+  }
+
+  /**
+   * mock execution for demo purposes.
+   * in Phase 2, this will be replaced by a real WASM-based SVM.
+   */
+  simulateExecution(inst) {
+    const { opName, dst, src, imm } = inst;
+    
+    // simple mock logic for basic opcodes
+    if (opName === "mov64") {
+      this.state.registers[dst] = src === 0 ? BigInt(imm) : this.state.registers[src];
+    } else if (opName === "add64") {
+      const val = src === 0 ? BigInt(imm) : this.state.registers[src];
+      this.state.registers[dst] = this.state.registers[dst] + val;
+    } else if (opName === "lddw") {
+      this.state.registers[dst] = BigInt(imm);
+    }
   }
 
   /**
