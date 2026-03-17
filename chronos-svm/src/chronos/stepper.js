@@ -8,6 +8,7 @@ export class ChronosStepper {
   constructor(instructions) {
     this.instructions = instructions;
     this.currentIndex = 0;
+    this.isMutated = false;
     
     // the history book: stores snapshots of [registers, pc, status]
     this.history = [];
@@ -45,8 +46,8 @@ export class ChronosStepper {
       this.currentIndex++;
       this.state.pc = this.currentIndex;
       
-      // 3. Record the result for the NEW position
-      this.recordSnapshot(this.currentIndex);
+      // 3. Record the result for the EXECUTED position
+      this.recordSnapshot(this.currentIndex - 1);
       return true;
     }
     return false;
@@ -111,20 +112,26 @@ export class ChronosStepper {
    */
   mutateState(regIndex, newValue) {
     if (regIndex >= 0 && regIndex < 11) {
-      // 1. Update the register
-      this.state.registers[regIndex] = BigInt(newValue);
-      
-      // 2. "Split the Timeline"
-      // Remove all snapshots after the current instruction
-      this.history = this.history.filter(h => h.pc <= this.currentIndex);
-      
-      // 3. Update the current snapshot with the mutated value
-      const currentSnap = this.history[this.history.length - 1];
-      if (currentSnap) {
-        currentSnap.registers = new BigUint64Array(this.state.registers);
+      try {
+        // 1. Update the register
+        this.state.registers[regIndex] = BigInt(newValue);
+        this.isMutated = true;
+        
+        // 2. "Split the Timeline"
+        // Remove all snapshots after the current instruction
+        this.history = this.history.filter(h => h.pc <= this.currentIndex);
+        
+        // 3. Update the current snapshot with the mutated value
+        const currentSnap = this.history[this.history.length - 1];
+        if (currentSnap) {
+          currentSnap.registers = new BigUint64Array(this.state.registers);
+        }
+        
+        return true;
+      } catch (e) {
+        console.error("Invalid Paradox Injection:", e);
+        return false;
       }
-      
-      return true;
     }
     return false;
   }
@@ -133,6 +140,6 @@ export class ChronosStepper {
    * check if the engine has moved from its original path.
    */
   isParadoxActive() {
-    return this.history.length < this.instructions.length;
+    return this.isMutated;
   }
 }
