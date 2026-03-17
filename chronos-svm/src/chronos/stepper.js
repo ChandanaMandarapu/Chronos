@@ -104,4 +104,35 @@ export class ChronosStepper {
   getCurrentState() {
     return this.history[this.history.length - 1];
   }
+
+  /**
+   * inject a new value into the machine state.
+   * this is the "Paradox Resolver" - it allows changing history.
+   */
+  mutateState(regIndex, newValue) {
+    if (regIndex >= 0 && regIndex < 11) {
+      // 1. Update the register
+      this.state.registers[regIndex] = BigInt(newValue);
+      
+      // 2. "Split the Timeline"
+      // Remove all snapshots after the current instruction
+      this.history = this.history.filter(h => h.pc <= this.currentIndex);
+      
+      // 3. Update the current snapshot with the mutated value
+      const currentSnap = this.history[this.history.length - 1];
+      if (currentSnap) {
+        currentSnap.registers = new BigUint64Array(this.state.registers);
+      }
+      
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * check if the engine has moved from its original path.
+   */
+  isParadoxActive() {
+    return this.history.length < this.instructions.length;
+  }
 }
