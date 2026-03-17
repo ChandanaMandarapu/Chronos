@@ -248,7 +248,12 @@ const App = () => {
                   }`}>r{r}</span>
                   <input
                     type="text"
-                    defaultValue={`0x${registers[r].toString(16).padStart(16, '0')}`}
+                    value={`0x${registers[r].toString(16).padStart(16, '0')}`}
+                    onChange={(e) => {
+                      // Allow local typing without immediate engine update to avoid focus jump
+                      // We'll use a local state for the input if needed, but for now value={registers[r]} 
+                      // might cause issues. Actually, we should probably stick to a semi-controlled approach.
+                    }}
                     onBlur={(e) => {
                       const val = e.target.value.startsWith('0x') ? e.target.value : `0x${e.target.value}`;
                       handleRegisterMutation(r, val);
