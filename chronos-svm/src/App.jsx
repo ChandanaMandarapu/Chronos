@@ -95,8 +95,15 @@ const App = () => {
     }
   };
 
+  const handleRegisterMutation = (regIndex, newValue) => {
+    if (stepper && stepper.mutateState(regIndex, newValue)) {
+      setCurrentSnapshot({ ...stepper.getCurrentState() });
+    }
+  };
+
   const activeStep = currentSnapshot ? currentSnapshot.pc : 0;
   const registers = currentSnapshot ? currentSnapshot.registers : new BigUint64Array(11);
+  const isParadox = stepper ? stepper.isParadoxActive() : false;
 
   return (
     <div className="min-h-screen p-6 flex flex-col gap-6 terminal-grid selection:bg-primary selection:text-black">
@@ -115,6 +122,13 @@ const App = () => {
             <p className="text-xs text-slate-500 font-medium tracking-[0.2em]">TIME-TRAVEL SVM ENGINE</p>
           </div>
         </div>
+
+        {isParadox && (
+          <div className="flex items-center gap-2 px-4 py-1.5 bg-red-500/10 border border-red-500/30 rounded-full animate-pulse">
+            <Zap className="w-4 h-4 text-red-500" />
+            <span className="text-[10px] font-bold text-red-400 uppercase tracking-widest">Paradox Detected: Timeline Split</span>
+          </div>
+        )}
 
         <div className="flex items-center gap-4">
           <div className="flex bg-white/5 p-1 rounded-lg border border-white/10">
@@ -232,14 +246,35 @@ const App = () => {
                   <span className={`text-[10px] font-bold uppercase tracking-tighter ${
                     instructions[activeStep]?.dst === r ? 'text-primary' : 'text-slate-500'
                   }`}>r{r}</span>
-                  <span className={`text-sm font-mono font-bold transition-all ${
-                    instructions[activeStep]?.dst === r ? 'text-white' : 'text-primary'
-                  }`}>
-                    0x{registers[r].toString(16).padStart(16, '0')}
-                  </span>
+                  <input
+                    type="text"
+                    defaultValue={`0x${registers[r].toString(16).padStart(16, '0')}`}
+                    onBlur={(e) => {
+                      const val = e.target.value.startsWith('0x') ? e.target.value : `0x${e.target.value}`;
+                      handleRegisterMutation(r, val);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        e.target.blur();
+                      }
+                    }}
+                    className={`bg-transparent border-none outline-none text-sm font-mono font-bold w-full transition-all ${
+                      instructions[activeStep]?.dst === r ? 'text-white' : 'text-primary'
+                    }`}
+                  />
                 </div>
               ))}
             </div>
+            {isParadox && (
+              <div className="p-3 border-t border-red-500/20 bg-red-500/5 flex justify-center">
+                <button 
+                  onClick={() => setActiveScenario(activeScenario)} // Reloading scenario resets the engine
+                  className="text-[10px] font-bold text-red-400 hover:text-red-300 flex items-center gap-2 uppercase tracking-widest"
+                >
+                  <RotateCcw className="w-3 h-3" /> Reset Timeline Paradox
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="glass-panel h-1/2 flex flex-col border-white/5">
